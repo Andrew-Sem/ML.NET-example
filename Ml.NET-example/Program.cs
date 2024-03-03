@@ -9,59 +9,60 @@ namespace Ml.NET_example
         {
             MLContext mlContext = new MLContext();
 
-            // Загрузить данные
-            IDataView trainingDataView = mlContext.Data.LoadFromTextFile<HousingData>("data.csv", hasHeader: true, separatorChar: ',');
+            // Load data
+            IDataView trainingDataView = mlContext.Data.LoadFromTextFile<TitanicData>("data.csv", hasHeader: true, separatorChar: ',');
 
-            // Конфигурация обработки данных с использованием конвейера преобразований данных
-            var dataProcessPipeline = mlContext.Transforms.Concatenate("Features", nameof(HousingData.Floor), nameof(HousingData.NumberOfRooms), nameof(HousingData.InfrastructureScore))
-                .Append(mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: nameof(HousingData.Price)));
+            // Data processing configuration with a data transformation pipeline
+            var dataProcessPipeline = mlContext.Transforms.Categorical.OneHotEncoding(outputColumnName: "SexEncoded", inputColumnName: nameof(TitanicData.Sex))
+                .Append(mlContext.Transforms.Concatenate("Features", nameof(TitanicData.PClass), "SexEncoded", nameof(TitanicData.Age)))
+                .Append(mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: nameof(TitanicData.Survived)));
 
-            // Установить алгоритм обучения
+            // Set the training algorithm
             var trainer = mlContext.Regression.Trainers.Sdca(labelColumnName: "Label", featureColumnName: "Features");
             var trainingPipeline = dataProcessPipeline.Append(trainer);
 
-            // Обучить модель на наборе данных
+            // Train the model on the dataset
             var trainedModel = trainingPipeline.Fit(trainingDataView);
 
-            // Оценить модель на обучающем наборе
+            // Evaluate the model on the training set
             var predictions = trainedModel.Transform(trainingDataView);
             var metrics = mlContext.Regression.Evaluate(predictions, "Label", "Score");
 
             Console.WriteLine($"R^2: {metrics.RSquared:0.##}");
             Console.WriteLine($"RMS error: {metrics.RootMeanSquaredError:0.##}");
 
-            // Использовать обученную модель для одного прогноза
-            var predictionFunction = mlContext.Model.CreatePredictionEngine<HousingData, HousingPrediction>(trainedModel);
+            // Use the trained model for a single prediction
+            var predictionFunction = mlContext.Model.CreatePredictionEngine<TitanicData, TitanicPrediction>(trainedModel);
 
-            var prediction = predictionFunction.Predict(new HousingData()
+            var prediction = predictionFunction.Predict(new TitanicData()
             {
-                Floor = 2,
-                NumberOfRooms = 3,
-                InfrastructureScore = 8
+                PClass = 2,
+                Sex = "female",
+                Age = 30
             });
 
-            Console.WriteLine($"Predicted price: {prediction.Price:0.##}");
+            Console.WriteLine($"Predicted chance to survive: {prediction.Survived:0.##}");
         }
 
-        public class HousingData
+        public class TitanicData
         {
             [LoadColumn(0)]
-            public float Floor { get; set; }
+            public float Survived { get; set; }
 
             [LoadColumn(1)]
-            public float NumberOfRooms { get; set; }
+            public float PClass { get; set; }
 
             [LoadColumn(2)]
-            public float InfrastructureScore { get; set; }
+            public string Sex { get; set; }
 
             [LoadColumn(3)]
-            public float Price { get; set; }
+            public float Age { get; set; }
         }
 
-        public class HousingPrediction
+        public class TitanicPrediction
         {
             [ColumnName("Score")]
-            public float Price { get; set; }
+            public float Survived { get; set; }
         }
     }
 }

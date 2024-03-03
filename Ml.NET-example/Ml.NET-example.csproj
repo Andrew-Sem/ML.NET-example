@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="bin\Debug\net8.0\data-titanic.csv" />
+      <Content Include="bin\Debug\net8.0\data.csv" />
     </ItemGroup>
 
     <ItemGroup>
